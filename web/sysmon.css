@@ -1,0 +1,172 @@
+/* Системный монитор под свёрнутым плеером */
+#sys-monitor {
+  position: fixed;
+  z-index: 19;
+  width: 300px;
+  max-height: calc(100vh - 220px);
+  display: flex;
+  flex-direction: column;
+  font-family: "Cascadia Mono", "Consolas", "Segoe UI Mono", ui-monospace, monospace;
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+}
+
+#sys-monitor.hidden { display: none; }
+
+.sys-head {
+  cursor: default;
+  padding: 6px 10px;
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+
+.sys-head:active { cursor: default; }
+.sys-head .win-title { font-family: var(--font); font-size: 12.5px; }
+
+.sys-live {
+  width: 6px;
+  height: 6px;
+  margin-right: 2px;
+  border-radius: 50%;
+  align-self: center;
+  background: #46e08a;
+  box-shadow: 0 0 8px rgba(70, 224, 138, 0.8);
+  opacity: 0.35;
+  transition: opacity 0.25s;
+}
+
+.sys-live.on { opacity: 1; }
+
+#sys-toggle { transition: transform 0.2s, background 0.15s; }
+#sys-monitor.collapsed #sys-toggle { transform: rotate(-90deg); }
+#sys-monitor.collapsed .sys-body { display: none; }
+
+.sys-body {
+  padding: 8px 10px 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.sys-body::-webkit-scrollbar { width: 6px; }
+.sys-body::-webkit-scrollbar-thumb {
+  background: var(--panel-border);
+  border-radius: 999px;
+}
+
+.sys-line,
+.sys-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  line-height: 1.6;
+}
+
+.sys-line b,
+.sys-row > span:last-child {
+  font-weight: 600;
+  text-align: right;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sys-key {
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+}
+
+.sys-dim,
+.sys-total {
+  color: var(--text-dim);
+  font-style: normal;
+  font-size: 10.5px;
+  font-weight: 500;
+}
+
+.sys-row em,
+.sys-nets em {
+  font-style: normal;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.sys-row em { font-size: 12.5px; }
+
+.sys-bar {
+  height: 4px;
+  margin: 3px 0 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 13%, transparent);
+  overflow: hidden;
+}
+
+.sys-bar i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 0.45s ease, background 0.3s;
+}
+
+.sys-bar.hot i { background: linear-gradient(90deg, #ffa45c, #ff5470); }
+
+.sys-sep {
+  height: 1px;
+  margin: 7px 0;
+  background: var(--panel-border);
+  opacity: 0.55;
+}
+
+.sys-sub {
+  margin: 1px 0 3px;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--text-dim);
+}
+
+.sys-nets {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.sys-nets.sys-total { font-size: 10.5px; }
+.sys-nets.sys-total em { color: var(--text-dim); font-weight: 600; }
+
+.sys-procs { display: grid; gap: 2px; }
+
+.sys-proc {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  line-height: 1.5;
+}
+
+.sys-proc .n {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+
+.sys-proc .v {
+  flex: 0 0 auto;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.sys-weather .sys-line b { font-size: 14px; color: var(--accent); }
+
+@media (max-height: 700px) {
+  #sys-monitor { font-size: 11px; max-height: calc(100vh - 190px); }
+  .sys-line, .sys-row { line-height: 1.45; }
+  .sys-bar { margin-bottom: 5px; }
+}

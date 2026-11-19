@@ -1,0 +1,83 @@
+/* ===== Десктопная оболочка: своя полоса заголовка ===== */
+:root {
+  --tb-h: 36px;
+}
+
+#titlebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--tb-h);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: color-mix(in srgb, var(--panel-bg) 88%, transparent);
+  border-bottom: 1px solid var(--panel-border);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  color: var(--text);
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+.tb-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-left: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  pointer-events: none;
+}
+
+.tb-brand img {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.tb-btns {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.tb-btn {
+  width: 46px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1;
+  font-family: var(--font);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.tb-btn:hover { background: var(--btn-hover); }
+.tb-btn:active { background: var(--btn-active); }
+.tb-btn.tb-close:hover { background: #e81123; color: #fff; }
+.tb-btn.tb-close:active { background: #c50f1f; color: #fff; }
+
+.tb-menu-icon {
+  width: 15px;
+  height: 15px;
+  display: block;
+}
+
+/* Сдвигаем элементы интерфейса ниже полосы заголовка */
+#top-left { top: calc(var(--tb-h) + 12px); }
+#win-player { top: calc(var(--tb-h) + 12px); }
+#toast { top: calc(var(--tb-h) + 10px); }
+
+/* Окно без рамки: не даём полосе заголовка перекрывать док */
+#dock { z-index: 210; }

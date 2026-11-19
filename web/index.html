@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' app:; img-src 'self' app: data: blob:; media-src 'self' app: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' app:; connect-src 'self' app:; font-src 'self' data:">
+<title>Веб-приложение</title>
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="theme-color" content="#0a0c10">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="desktop.css">
+<link rel="stylesheet" href="lyrics.css">
+<link rel="stylesheet" href="sysmon.css">
+</head>
+<body>
+
+<!-- Полоса заголовка десктопного приложения -->
+<div id="titlebar">
+  <div class="tb-brand">
+    <img src="icon-192.png" alt="">
+    <span>Веб-приложение</span>
+  </div>
+  <div class="tb-btns">
+    <button id="tb-menu" class="tb-btn" title="Меню" tabindex="-1">
+      <svg class="tb-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <button id="tb-min" class="tb-btn" title="Свернуть" tabindex="-1">
+      <svg class="tb-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="12" x2="20" y2="12"/></svg>
+    </button>
+    <button id="tb-max" class="tb-btn" title="Развернуть" tabindex="-1">
+      <svg class="tb-menu-icon" id="tb-max-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>
+    </button>
+    <button id="tb-close" class="tb-btn tb-close" title="Закрыть" tabindex="-1">
+      <svg class="tb-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- Фоны (два слоя для плавного перехода) -->
+<div id="bg-a" class="bg-layer"></div>
+<div id="bg-b" class="bg-layer"></div>
+
+<!-- Летающие кубики -->
+<div id="cubes"></div>
+
+<!-- Левый верхний угол: инь-янь и смена фона -->
+<div id="top-left">
+  <button id="theme-btn" class="glass-btn" title="Переключить светлую/тёмную тему">
+    <span class="yin-wrap" id="yin-wrap">
+      <svg class="yin" viewBox="0 0 100 100" aria-hidden="true">
+        <circle cx="50" cy="50" r="49" fill="#f5f5f5" stroke="#1b1b1b" stroke-width="2"/>
+        <path d="M50,1 A49,49 0 0,1 50,99 A24.5,24.5 0 0,1 50,50 A24.5,24.5 0 0,0 50,1 Z" fill="#1b1b1b"/>
+        <circle cx="50" cy="25.5" r="7" fill="#1b1b1b"/>
+        <circle cx="50" cy="74.5" r="7" fill="#f5f5f5"/>
+      </svg>
+    </span>
+    <span id="theme-label">Тёмная тема</span>
+  </button>
+  <button id="bg-btn" class="glass-btn" title="Сменить фон в текущей теме">🖼️ Фон</button>
+</div>
+
+<!-- Плеер: справа вверху, прозрачное окошко -->
+<section id="win-player" class="window glass">
+  <header class="win-head">
+    <span class="win-title">Плеер</span>
+    <span class="win-tools">
+      <button id="music-list" class="icon-btn" title="Список треков">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3.5" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="3.5" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="3.5" cy="18" r="1.3" fill="currentColor" stroke="none"/></svg>
+      </button>
+      <button id="music-refresh" class="icon-btn" title="Обновить список из папки «музыка»">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </button>
+      <button class="icon-btn win-close" title="Скрыть">✕</button>
+    </span>
+  </header>
+  <div class="win-body">
+    <div class="mini-track">
+      <img id="mini-art" class="mini-art" alt="" hidden>
+      <div class="mini-track-text">
+        <div id="track-title" title="">Ничего не играет</div>
+        <div id="mini-artist" class="mini-artist" hidden></div>
+      </div>
+      <button id="btn-nowplaying" class="mini-expand" title="Открыть плеер с текстом">⤢</button>
+    </div>
+    <div id="progress" title="Перемотка"><div id="progress-fill"></div></div>
+    <div id="time-row"><span id="time-cur">0:00</span><span id="time-total">0:00</span></div>
+    <div class="controls">
+      <button id="btn-prev" class="ctl" title="Предыдущий">
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="5" x2="6" y2="19"/><polygon points="18,5 9,12 18,19" stroke="none"/></svg>
+      </button>
+      <button id="btn-play" class="ctl big" title="Играть / Пауза">
+        <svg id="icon-play" viewBox="0 0 24 24" fill="currentColor"><polygon points="7,4 20,12 7,20"/></svg>
+        <svg id="icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></svg>
+      </button>
+      <button id="btn-next" class="ctl" title="Следующий">
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="6,5 15,12 6,19" stroke="none"/><line x1="18" y1="5" x2="18" y2="19"/></svg>
+      </button>
+      <button id="btn-shuffle" class="ctl" title="Перемешать">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+      </button>
+    </div>
+    <div class="volume-row">
+      <button id="btn-mute" class="ctl" title="Звук вкл/выкл">
+        <svg id="icon-vol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+        <svg id="icon-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+      </button>
+      <input id="volume" type="range" min="0" max="100" value="80" title="Громкость">
+      <span id="volume-val">80</span>
+    </div>
+    <div id="track-list" hidden></div>
+    <button id="btn-pick-folder" class="mini-btn" hidden>📂 Выбрать папку с музыкой</button>
+    <input id="music-input" type="file" webkitdirectory multiple hidden>
+  </div>
+</section>
+
+<!-- Слоты -->
+<section id="win-slots" class="window glass float">
+  <header class="win-head">
+    <span class="win-title">🎰 Слоты удачи</span>
+    <button class="icon-btn win-close" title="Скрыть">✕</button>
+  </header>
+  <div class="win-body">
+    <div class="reels">
+      <div class="reel">🍒</div>
+      <div class="reel">⭐</div>
+      <div class="reel">💎</div>
+    </div>
+    <button id="btn-spin">КРУТИТЬ</button>
+    <div id="slots-msg">Испытай удачу!</div>
+    <div id="joke-box" hidden>
+      <div class="joke-title">🎺 ДЖЕКПОТ! Анекдот про Путина:</div>
+      <div id="joke-text"></div>
+    </div>
+    <div id="slots-stats">Крутов: 0 · Джекпотов: 0</div>
+  </div>
+</section>
+
+<!-- Системный монитор: висит под плеером -->
+<section id="sys-monitor" class="window glass" aria-label="Системный монитор">
+  <header class="win-head sys-head">
+    <span class="win-title">Система</span>
+    <span class="win-tools">
+      <span id="sys-live" class="sys-live" title="Обновляется"></span>
+      <button id="sys-toggle" class="icon-btn" title="Свернуть монитор">▾</button>
+    </span>
+  </header>
+  <div class="win-body sys-body" id="sys-body">
+    <div class="sys-line"><span class="sys-key">ПК</span><b id="sys-host">—</b></div>
+    <div class="sys-line"><span class="sys-key">ОС</span><b id="sys-os">—</b></div>
+    <div class="sys-line"><span class="sys-key">Аптайм</span><b id="sys-uptime">—</b></div>
+
+    <div class="sys-sep"></div>
+
+    <div class="sys-row"><span>ЦП</span><span><em id="sys-cpu-val">0%</em> <i id="sys-cores" class="sys-dim"></i></span></div>
+    <div class="sys-bar"><i id="sys-cpu-bar"></i></div>
+
+    <div class="sys-row"><span>Память</span><span><em id="sys-mem-val">0%</em> <i id="sys-mem-txt" class="sys-dim"></i></span></div>
+    <div class="sys-bar"><i id="sys-mem-bar"></i></div>
+
+    <div class="sys-row"><span id="sys-disk-name">Диск</span><span><em id="sys-disk-val">0%</em> <i id="sys-disk-txt" class="sys-dim"></i></span></div>
+    <div class="sys-bar"><i id="sys-disk-bar"></i></div>
+
+    <div class="sys-sep"></div>
+
+    <div class="sys-line"><span class="sys-key">IP</span><b id="sys-ip">—</b></div>
+    <div class="sys-nets">
+      <span>↓ <em id="sys-down">—</em></span>
+      <span>↑ <em id="sys-up">—</em></span>
+    </div>
+    <div class="sys-nets sys-total">
+      <span>Σ↓ <em id="sys-rx">—</em></span>
+      <span>Σ↑ <em id="sys-tx">—</em></span>
+    </div>
+
+    <div class="sys-sep"></div>
+    <div class="sys-sub">Процессы</div>
+    <div id="sys-procs" class="sys-procs"><div class="sys-dim">Считаю…</div></div>
+
+    <div id="sys-weather" class="sys-weather" hidden>
+      <div class="sys-sep"></div>
+      <div class="sys-sub">Погода</div>
+      <div class="sys-line"><span id="sys-w-text">—</span><b id="sys-w-temp">—</b></div>
+      <div class="sys-line sys-total"><span>ветер <em id="sys-w-wind">—</em></span><span>влажн. <em id="sys-w-hum">—</em></span></div>
+    </div>
+  </div>
+</section>
+
+<nav id="dock" class="glass">
+  <button class="dock-app" data-win="win-player" data-name="Плеер"><span class="tile t-player">🎵</span><span class="dot"></span></button>
+  <button class="dock-app" data-win="win-slots" data-name="Слоты"><span class="tile t-slots">🎰</span><span class="dot"></span></button>
+  <span class="dock-sep"></span>
+  <button class="dock-app" data-url="https://arena.ai/" data-name="Arena AI"><span class="tile t-arena">A</span></button>
+  <button class="dock-app" data-url="https://docs.google.com/spreadsheets/d/1rtQLRPrTkGcNBGHAGYtjNp2dx_00BG-i4Z7b4Rwhrho/edit?pli=1&gid=1284571108#gid=1284571108" data-name="Google Таблицы"><span class="tile t-sheets"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="21"/><line x1="15" y1="9" x2="15" y2="21"/></svg></span></button>
+  <button class="dock-app" data-url="https://music.yandex.ru/collection" data-name="Яндекс Музыка"><span class="tile t-ymusic">♪</span></button>
+  <button class="dock-app" data-url="https://vk.ru/feed" data-name="VK"><span class="tile t-vk">VK</span></button>
+  <button class="dock-app" data-url="https://platform.deepseek.com/usage" data-name="DeepSeek"><span class="tile t-deep">🐳</span></button>
+  <button class="dock-app" id="install-app" data-name="Установить приложение" hidden><span class="tile t-install">⤓</span></button>
+</nav>
+
+<!-- Полноэкранный плеер с синхронным текстом -->
+<section id="now-playing" hidden aria-hidden="true">
+  <canvas id="np-canvas"></canvas>
+  <div class="np-glow"></div>
+
+  <div class="np-topbar">
+    <button id="np-close" class="np-icon-btn np-back" title="Назад (Esc)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 5 8 12 15 19"/></svg>
+      <span>Плеер</span>
+    </button>
+    <div class="np-top-title">Сейчас играет</div>
+    <div class="np-top-actions">
+      <button id="np-open-folder" class="np-icon-btn" title="Открыть папку с музыкой">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+      </button>
+      <button id="np-fullscreen" class="np-icon-btn" title="На весь экран (F11)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="np-grid">
+    <aside class="np-card np-left">
+      <div class="np-art-wrap">
+        <img id="np-art" alt="" hidden>
+        <div id="np-art-fallback" class="np-art-fallback"><span>♪</span></div>
+        <div class="np-art-shine"></div>
+      </div>
+
+      <div class="np-titles">
+        <h1 id="np-title">Ничего не играет</h1>
+        <div id="np-artist" class="np-artist"></div>
+      </div>
+
+      <div id="np-eq" class="np-eq" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+      </div>
+
+      <div id="np-progress" class="np-progress" title="Перемотка">
+        <div id="np-progress-fill"></div>
+        <div id="np-progress-knob"></div>
+      </div>
+      <div class="np-times"><span id="np-cur">0:00</span><span id="np-total">0:00</span></div>
+
+      <div class="np-controls">
+        <button id="np-prev" class="ctl" title="Предыдущий">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="5" x2="6" y2="19"/><polygon points="18,5 9,12 18,19" stroke="none"/></svg>
+        </button>
+        <button id="np-play" class="ctl big" title="Играть / Пауза">
+          <svg id="np-icon-play" viewBox="0 0 24 24" fill="currentColor"><polygon points="7,4 20,12 7,20"/></svg>
+          <svg id="np-icon-pause" viewBox="0 0 24 24" fill="currentColor" style="display:none"><rect x="6" y="4" width="4" height="16" rx="1.2"/><rect x="14" y="4" width="4" height="16" rx="1.2"/></svg>
+        </button>
+        <button id="np-next" class="ctl" title="Следующий">
+          <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="6,5 15,12 6,19" stroke="none"/><line x1="18" y1="5" x2="18" y2="19"/></svg>
+        </button>
+        <button id="np-shuffle" class="ctl" title="Перемешать">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+        </button>
+      </div>
+
+      <div class="np-volume">
+        <button id="np-mute" class="ctl" title="Звук вкл/выкл">
+          <svg id="np-icon-vol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+          <svg id="np-icon-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+        </button>
+        <input id="np-volume" type="range" min="0" max="100" value="80" title="Громкость">
+        <span id="np-volume-val">80</span>
+      </div>
+
+      <div class="np-panels">
+        <div class="np-panel">
+          <div class="np-panel-title">Спектр</div>
+          <canvas id="np-spectrum"></canvas>
+        </div>
+        <div class="np-panel np-panel-energy">
+          <div class="np-panel-title">Энергия</div>
+          <div class="np-energy">
+            <div id="np-ring" class="np-ring"><span id="np-energy-val">0%</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="np-tracklist-wrap">
+        <div class="np-panel-title np-tracklist-title">
+          <span>Плейлист</span>
+          <span id="np-track-count"></span>
+        </div>
+        <div id="np-tracklist" class="np-tracklist"></div>
+      </div>
+    </aside>
+
+    <section class="np-card np-lyrics-card">
+      <header class="np-lyrics-head">
+        <div class="np-lyrics-titles">
+          <div class="np-lyrics-title">Текст песни</div>
+          <div id="np-lyrics-source" class="np-lyrics-source">—</div>
+        </div>
+        <div class="np-lyrics-tools">
+          <button id="np-offset-minus" class="np-chip" title="Сдвинуть текст позже">A−</button>
+          <button id="np-offset-plus" class="np-chip" title="Сдвинуть текст раньше">A+</button>
+          <button id="np-offset-reset" class="np-chip np-chip-num" title="Сбросить сдвиг текста">0</button>
+          <button id="np-lyrics-reload" class="np-icon-btn" title="Найти текст заново">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          </button>
+          <label class="np-chip np-file-btn" title="Загрузить свой файл .lrc">
+            .lrc
+            <input id="np-lrc-file" type="file" accept=".lrc,text/plain" hidden>
+          </label>
+        </div>
+      </header>
+
+      <div id="np-lyrics-scroll" class="np-lyrics-scroll">
+        <div id="np-lyrics" class="np-lyrics"></div>
+        <div id="np-lyrics-empty" class="np-lyrics-empty" hidden>
+          <div class="np-empty-icon">♪</div>
+          <div id="np-empty-text">Ищу текст…</div>
+          <div class="np-empty-actions">
+            <button id="np-empty-reload" class="np-chip">Попробовать снова</button>
+            <label class="np-chip np-file-btn">
+              Загрузить .lrc
+              <input id="np-empty-lrc" type="file" accept=".lrc,text/plain" hidden>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <footer class="np-hint">Клик по строке — перемотка · A± — сдвиг текста · Esc — закрыть · Пробел — пауза</footer>
+    </section>
+  </div>
+</section>
+
+<div id="toast" hidden></div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script src="lyrics.js"></script>
+<script src="sysmon.js"></script>
+</body>
+</html>
