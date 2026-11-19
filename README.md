@@ -32,7 +32,7 @@ chmod +x VebPrilozhenie-<версия>-x86_64.AppImage
 ./VebPrilozhenie-<версия>-x86_64.AppImage
 ```
 
-- `VebPrilozhenie-<версия>-x64.deb` — пакет для Debian/Ubuntu: `sudo apt install ./VebPrilozhenie-<версия>-x64.deb`;
+- `VebPrilozhenie-<версия>-amd64.deb` — пакет для Debian/Ubuntu: `sudo apt install ./VebPrilozhenie-<версия>-amd64.deb`;
 - `VebPrilozhenie-<версия>-x64.tar.gz` — архив с распакованным приложением (запуск `./veb-prilozhenie`).
 
 AppImage требует `libfuse2` (в Ubuntu 24.04: `sudo apt install libfuse2t64`); альтернативно запускай с `--appimage-extract-and-run`.
