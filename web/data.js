@@ -33,7 +33,6 @@ const FALLBACK_ASSETS = {
     "темный фон alt.png"
   ],
   light: [
-    "фон.png",
     "фон alt.png"
   ],
   cubes: [

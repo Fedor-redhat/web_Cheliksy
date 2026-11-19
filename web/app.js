@@ -38,6 +38,11 @@ async function loadAssets() {
 /* ===== Фоны и темы ===== */
 const bgA = $("bg-a"), bgB = $("bg-b");
 let bgActiveLayer = "a";
+const readCustomFlag = t => {
+  const v = localStorage.getItem("app-bg-custom-" + t);
+  return v === null ? null : v === "1";
+};
+let bgCustom = { dark: readCustomFlag("dark"), light: readCustomFlag("light") };
 let bgIdx = {
   dark: parseInt(localStorage.getItem("app-bg-dark") || "0", 10) || 0,
   light: parseInt(localStorage.getItem("app-bg-light") || "0", 10) || 0
@@ -47,11 +52,28 @@ function themeKey() {
   return document.documentElement.dataset.theme;
 }
 
+function customBgUrl(theme) {
+  return (ASSETS && ASSETS.custom && ASSETS.custom[theme]) || null;
+}
+
+function setCustomBg(theme, active) {
+  bgCustom[theme] = !!active;
+  localStorage.setItem("app-bg-custom-" + theme, active ? "1" : "0");
+}
+
 function applyBackground() {
-  const list = (ASSETS && ASSETS[themeKey()]) || [];
-  if (!list.length) return;
-  const idx = ((bgIdx[themeKey()] % list.length) + list.length) % list.length;
-  const url = encodeURI(list[idx]);
+  const theme = themeKey();
+  const list = (ASSETS && ASSETS[theme]) || [];
+  const custom = customBgUrl(theme);
+  let url = null;
+  if (bgCustom[theme] !== false && custom) {
+    url = custom;
+  } else if (list.length) {
+    const idx = ((bgIdx[theme] % list.length) + list.length) % list.length;
+    url = list[idx];
+  }
+  if (!url) return;
+  url = encodeURI(url);
   const nextEl = bgActiveLayer === "a" ? bgB : bgA;
   const curEl = bgActiveLayer === "a" ? bgA : bgB;
   const img = new Image();
@@ -66,11 +88,42 @@ function applyBackground() {
 }
 
 function cycleBackground() {
-  const list = ASSETS[themeKey()] || [];
-  if (!list.length) return;
-  bgIdx[themeKey()] = ((bgIdx[themeKey()] % list.length) + list.length + 1) % list.length;
-  localStorage.setItem("app-bg-" + themeKey(), bgIdx[themeKey()]);
+  const theme = themeKey();
+  if (bgCustom[theme] !== false && customBgUrl(theme)) {
+    setCustomBg(theme, false);
+  } else {
+    const list = ASSETS[theme] || [];
+    if (!list.length) return;
+    bgIdx[theme] = ((bgIdx[theme] % list.length) + list.length + 1) % list.length;
+    localStorage.setItem("app-bg-" + theme, bgIdx[theme]);
+  }
   applyBackground();
+}
+
+async function pickWallpaper() {
+  if (!window.desktop || !window.desktop.chooseWallpaper) {
+    toast("Свои обои доступны только в приложении");
+    return;
+  }
+  const theme = themeKey();
+  const res = await window.desktop.chooseWallpaper(theme);
+  if (!res) return;
+  ASSETS = ASSETS || {};
+  ASSETS.custom = ASSETS.custom || {};
+  ASSETS.custom[res.theme] = res.url;
+  setCustomBg(res.theme, true);
+  applyBackground();
+  toast(res.theme === theme ? "Обои обновлены" : "Обои сохранены для другой темы");
+}
+
+async function clearWallpaper() {
+  if (!window.desktop || !window.desktop.resetWallpaper) return;
+  const theme = themeKey();
+  await window.desktop.resetWallpaper(theme);
+  if (ASSETS && ASSETS.custom) ASSETS.custom[theme] = null;
+  setCustomBg(theme, false);
+  applyBackground();
+  toast("Свои обои убраны");
 }
 
 function setTheme(t, spin) {
@@ -96,6 +149,17 @@ $("theme-btn").addEventListener("click", () => {
   setTheme(themeKey() === "dark" ? "light" : "dark", true);
 });
 $("bg-btn").addEventListener("click", cycleBackground);
+$("bg-custom-btn").addEventListener("click", pickWallpaper);
+$("bg-custom-btn").addEventListener("contextmenu", e => {
+  e.preventDefault();
+  clearWallpaper();
+});
+if (window.desktop && window.desktop.onBgMenu) {
+  window.desktop.onBgMenu(action => {
+    if (action === "choose") pickWallpaper();
+    else if (action === "reset") clearWallpaper();
+  });
+}
 
 /* ===== Летающие кубики ===== */
 function buildDrift(i, dir) {

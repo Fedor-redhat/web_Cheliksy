@@ -77,6 +77,24 @@ function writeSettings(patch) {
   return next;
 }
 
+const BG_THEMES = new Set(['dark', 'light']);
+
+function bgDir() {
+  return path.join(app.getPath('userData'), 'backgrounds');
+}
+
+function customBgFile(theme) {
+  const t = BG_THEMES.has(theme) ? theme : 'dark';
+  const name = (readSettings().customBg || {})[t];
+  if (!name) return null;
+  const file = path.join(bgDir(), path.basename(name));
+  try {
+    return fs.statSync(file).isFile() ? file : null;
+  } catch {
+    return null;
+  }
+}
+
 function isDir(p) {
   try {
     return !!p && fs.statSync(p).isDirectory();
@@ -130,12 +148,17 @@ function listFiles(dir, exts) {
   }
 }
 
-function assetList({ lightOnly = false } = {}) {
+function assetList() {
   const names = listFiles(WEB_DIR, IMG_EXT);
   const dark = names.filter(n => n.toLowerCase().includes('темн'));
   const light = names.filter(n => !n.toLowerCase().includes('темн') && !/^icon-/i.test(n));
   const cubes = listFiles(CUBE_DIR, IMG_EXT);
-  return { dark, light, cubes };
+  const custom = { dark: null, light: null };
+  for (const t of BG_THEMES) {
+    const file = customBgFile(t);
+    if (file) custom[t] = 'user-bg/' + t + '?v=' + Math.round(fs.statSync(file).mtimeMs);
+  }
+  return { dark, light, cubes, custom };
 }
 
 function safeJoin(root, relative) {
@@ -546,6 +569,14 @@ function handleAppRequest(request) {
     return fileResponse(file, request);
   }
 
+  if (pathname.startsWith('/user-bg/')) {
+    const theme = pathname.slice('/user-bg/'.length).replace(/\/+$/, '');
+    if (!BG_THEMES.has(theme)) return new Response('Не найдено', { status: 404 });
+    const file = customBgFile(theme);
+    if (!file) return new Response('Не найдено', { status: 404 });
+    return fileResponse(file, request);
+  }
+
   const rel = pathname === '/' ? 'index.html' : pathname.replace(/^\/+/, '');
   const file = safeJoin(WEB_DIR, rel);
   if (!file) return new Response('Запрещено', { status: 403 });
@@ -817,6 +848,62 @@ function createWindow() {
     });
   }
 
+  const bgTestArg = process.argv.find(a => a.startsWith('--bgtest='));
+  if (bgTestArg) {
+    const dir = bgTestArg.slice('--bgtest='.length);
+    const sleep = ms => new Promise(res => setTimeout(res, ms));
+    mainWindow.webContents.on('console-message', (_e, level, message, line, sourceId) => {
+      console.log(`[renderer:${level}] ${message} (${sourceId}:${line})`);
+    });
+    mainWindow.webContents.on('did-finish-load', async () => {
+      await sleep(2500);
+      try {
+        const before = await mainWindow.webContents.executeJavaScript(`(async () => {
+          const layer = document.querySelector('.bg-layer.visible');
+          const api = await (await fetch('/api/assets')).json();
+          const r = await fetch('/user-bg/dark');
+          const blob = await r.blob();
+          return {
+            bg: layer ? getComputedStyle(layer).backgroundImage : '',
+            custom: api.custom,
+            status: r.status,
+            type: r.headers.get('content-type'),
+            size: blob.size
+          };
+        })()`);
+        console.log('BGTEST custom=' + JSON.stringify(before));
+        const img = await mainWindow.webContents.capturePage();
+        fs.writeFileSync(path.join(dir, 'wallpaper-custom.png'), img.toPNG());
+
+        await mainWindow.webContents.executeJavaScript(`document.getElementById('bg-btn').click(); 'ok'`);
+        await sleep(1600);
+        const after = await mainWindow.webContents.executeJavaScript(`(() => {
+          const layer = document.querySelector('.bg-layer.visible');
+          return { bg: layer ? getComputedStyle(layer).backgroundImage : '' };
+        })()`);
+        console.log('BGTEST cycle=' + JSON.stringify(after));
+        const img2 = await mainWindow.webContents.capturePage();
+        fs.writeFileSync(path.join(dir, 'wallpaper-builtin.png'), img2.toPNG());
+
+        await mainWindow.webContents.executeJavaScript(`(() => {
+          const b = document.getElementById('bg-custom-btn');
+          b.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+          return 'ok';
+        })()`);
+        await sleep(1400);
+        const reset = await mainWindow.webContents.executeJavaScript(`(async () => {
+          const api = await (await fetch('/api/assets')).json();
+          const r = await fetch('/user-bg/dark');
+          return { custom: api.custom, status: r.status };
+        })()`);
+        console.log('BGTEST reset=' + JSON.stringify(reset));
+      } catch (e) {
+        console.log('BGTEST FAIL ' + e.message);
+      }
+      app.exit(0);
+    });
+  }
+
   const shotArg = process.argv.find(a => a.startsWith('--shot='));
   if (shotArg) {
     const shotPath = shotArg.slice('--shot='.length);
@@ -870,6 +957,14 @@ function buildAppMenu() {
       label: 'Открыть папку с музыкой',
       click: () => shell.openPath(musicDir())
     },
+    {
+      label: 'Свои обои…',
+      click: () => win && win.webContents.send('bg:menu', 'choose')
+    },
+    {
+      label: 'Убрать свои обои',
+      click: () => win && win.webContents.send('bg:menu', 'reset')
+    },
     { type: 'separator' },
     {
       label: 'Всегда поверх окон',
@@ -908,6 +1003,54 @@ ipcMain.handle('music:list', () => listFiles(musicDir(), AUDIO_EXT));
 ipcMain.handle('music:choose', () => chooseMusicFolder(mainWindow));
 ipcMain.handle('music:path', () => musicDir());
 ipcMain.handle('music:open', () => shell.openPath(musicDir()));
+
+const BG_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp']);
+
+async function chooseWallpaper(theme) {
+  const t = BG_THEMES.has(theme) ? theme : 'dark';
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Выбери свои обои',
+    properties: ['openFile'],
+    filters: [{ name: 'Изображения', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'] }]
+  });
+  if (result.canceled || !result.filePaths.length) return null;
+  const src = result.filePaths[0];
+  const ext = path.extname(src).toLowerCase();
+  if (!BG_EXT.has(ext)) return null;
+  try {
+    const stat = fs.statSync(src);
+    if (!stat.isFile() || stat.size > 60 * 1024 * 1024) return null;
+    fs.mkdirSync(bgDir(), { recursive: true });
+    for (const f of fs.readdirSync(bgDir())) {
+      if (f.startsWith('custom-' + t + '.')) fs.rmSync(path.join(bgDir(), f), { force: true });
+    }
+    const name = 'custom-' + t + ext;
+    fs.copyFileSync(src, path.join(bgDir(), name));
+    writeSettings({ customBg: { ...(readSettings().customBg || {}), [t]: name } });
+  } catch {
+    return null;
+  }
+  return { theme: t, url: 'user-bg/' + t + '?v=' + Date.now() };
+}
+
+function resetWallpaper(theme) {
+  const t = BG_THEMES.has(theme) ? theme : 'dark';
+  try {
+    if (fs.existsSync(bgDir())) {
+      for (const f of fs.readdirSync(bgDir())) {
+        if (f.startsWith('custom-' + t + '.')) fs.rmSync(path.join(bgDir(), f), { force: true });
+      }
+    }
+  } catch { /* не критично */ }
+  const customBg = { ...(readSettings().customBg || {}) };
+  delete customBg[t];
+  writeSettings({ customBg });
+  return true;
+}
+
+ipcMain.handle('bg:choose', (_e, theme) => chooseWallpaper(theme));
+ipcMain.handle('bg:reset', (_e, theme) => resetWallpaper(theme));
+
 
 const sysCache = {
   disk: { at: 0, data: null },
@@ -1124,6 +1267,19 @@ if (!gotLock) {
   app.whenReady().then(() => {
     protocol.handle('app', handleAppRequest);
     Menu.setApplicationMenu(null);
+
+    const bgTestArg = process.argv.find(a => a.startsWith('--bgtest='));
+    if (bgTestArg) {
+      try {
+        const src = path.join(WEB_DIR, 'фон alt.png');
+        fs.mkdirSync(bgDir(), { recursive: true });
+        fs.copyFileSync(src, path.join(bgDir(), 'custom-dark.png'));
+        writeSettings({ customBg: { ...(readSettings().customBg || {}), dark: 'custom-dark.png' } });
+      } catch (e) {
+        console.log('BGTEST seed fail: ' + e.message);
+      }
+    }
+
     createWindow();
 
     app.on('activate', () => {
