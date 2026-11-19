@@ -3,6 +3,14 @@
   "version": "1.3.0",
   "description": "Личное приложение: темы, музыка, слоты, док приложений и плеер с синхронным текстом",
   "author": "miklm",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Fedor-redhat/web_Cheliksy.git"
+  },
+  "homepage": "https://github.com/Fedor-redhat/web_Cheliksy#readme",
+  "bugs": {
+    "url": "https://github.com/Fedor-redhat/web_Cheliksy/issues"
+  },
   "license": "MIT",
   "main": "main.js",
   "scripts": {
