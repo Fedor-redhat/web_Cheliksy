@@ -148,6 +148,36 @@ function listFiles(dir, exts) {
   }
 }
 
+function compareTracks(a, b) {
+  const dirA = a.includes('/') ? a.slice(0, a.lastIndexOf('/')) : '';
+  const dirB = b.includes('/') ? b.slice(0, b.lastIndexOf('/')) : '';
+  const byDir = dirA.localeCompare(dirB, 'ru', { sensitivity: 'base' });
+  if (byDir) return byDir;
+  const nameA = a.slice(a.lastIndexOf('/') + 1);
+  const nameB = b.slice(b.lastIndexOf('/') + 1);
+  return nameA.localeCompare(nameB, 'ru', { numeric: true, sensitivity: 'base' });
+}
+
+function listTracks() {
+  const found = [];
+  const walk = (dir, prefix, depth) => {
+    if (depth > 8) return;
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const ent of entries) {
+      const rel = prefix ? prefix + '/' + ent.name : ent.name;
+      if (ent.isDirectory()) walk(path.join(dir, ent.name), rel, depth + 1);
+      else if (ent.isFile() && AUDIO_EXT.has(path.extname(ent.name).toLowerCase())) found.push(rel);
+    }
+  };
+  walk(musicDir(), '', 0);
+  return found.sort(compareTracks);
+}
+
 function assetList() {
   const names = listFiles(WEB_DIR, IMG_EXT);
   const dark = names.filter(n => n.toLowerCase().includes('темн'));
@@ -240,15 +270,19 @@ function jsonResponse(payload) {
 /* ===== Метаданные треков, обложки и текст песен ===== */
 
 function guessFromName(name) {
-  const base = name.replace(/\.[^.]+$/, '').trim();
+  const base = String(name).split(/[\\/]/).pop().replace(/\.[^.]+$/, '').trim();
   const m = /^(.+?)\s+[-–—]\s+(.+)$/.exec(base);
   if (m) return { artist: m[1].trim(), title: m[2].trim() };
   return { artist: '', title: base };
 }
 
 function trackFilePath(name) {
-  if (!name || name !== path.basename(name)) return null;
-  return safeJoin(musicDir(), name);
+  if (typeof name !== 'string' || !name) return null;
+  const rel = name.replace(/\\/g, '/');
+  if (rel.startsWith('/') || /^[a-zA-Z]:/.test(rel)) return null;
+  if (rel.split('/').some(p => !p || p === '.' || p === '..')) return null;
+  if (!AUDIO_EXT.has(path.extname(rel).toLowerCase())) return null;
+  return safeJoin(musicDir(), rel);
 }
 
 async function getTrackInfo(name) {
@@ -546,7 +580,7 @@ function handleAppRequest(request) {
   const name = url.searchParams.get('name') || '';
 
   if (pathname === '/api/music') {
-    return jsonResponse(listFiles(musicDir(), AUDIO_EXT));
+    return jsonResponse(listTracks());
   }
   if (pathname === '/api/assets') {
     return jsonResponse(assetList());
@@ -996,10 +1030,10 @@ async function chooseMusicFolder(win) {
   });
   if (result.canceled || !result.filePaths.length) return null;
   writeSettings({ musicDir: result.filePaths[0] });
-  return listFiles(musicDir(), AUDIO_EXT);
+  return listTracks();
 }
 
-ipcMain.handle('music:list', () => listFiles(musicDir(), AUDIO_EXT));
+ipcMain.handle('music:list', () => listTracks());
 ipcMain.handle('music:choose', () => chooseMusicFolder(mainWindow));
 ipcMain.handle('music:path', () => musicDir());
 ipcMain.handle('music:open', () => shell.openPath(musicDir()));

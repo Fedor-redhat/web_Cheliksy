@@ -244,7 +244,11 @@ function fmtTime(s) {
 }
 
 function niceName(name) {
-  return name.replace(/\.[^.]+$/, "");
+  return String(name).split("/").pop().replace(/\.[^.]+$/, "");
+}
+
+function trackUrl(name) {
+  return "музыка/" + String(name).split("/").map(encodeURIComponent).join("/");
 }
 
 const miniMetaCache = new Map();
@@ -344,7 +348,7 @@ async function loadPlaylist(showToast) {
 
   if (Array.isArray(names)) {
     serverMode = true;
-    playlist = names.map(n => ({ name: n, url: "музыка/" + encodeURIComponent(n) }));
+    playlist = names.map(n => ({ name: n, url: trackUrl(n) }));
     $("btn-pick-folder").hidden = !(window.desktop && !playlist.length);
   } else {
     serverMode = false;
@@ -477,7 +481,7 @@ $("btn-pick-folder").addEventListener("click", async () => {
       return;
     }
     serverMode = true;
-    playlist = names.map(n => ({ name: n, url: "музыка/" + encodeURIComponent(n) }));
+    playlist = names.map(n => ({ name: n, url: trackUrl(n) }));
     renderList();
     playTrack(0);
     toast(`Найдено треков: ${playlist.length}`);
